@@ -1,0 +1,189 @@
+from flask import Flask, render_template, request, redirect
+import mysql.connector
+
+
+app = Flask(__name__)
+
+db = mysql.connector.connect (
+    host = "127.0.0.1",
+    user = "root",
+    passwd = "root",
+    database = "lightControlSys"
+)
+
+mycur = db.cursor()
+
+
+@app.route('/', methods = ["GET", "POST"])
+def home():
+    render_template("home.html")
+    
+    
+    
+@app.route('/register', methods = ["GET", "POST"])
+def register():
+    if request.method == 'POST':
+        mycur = db.cursor()
+        email = request.form ['username']
+        name = request.form['firstname']
+        surname = request.form['surname']
+        phonenum = request.form['phonenumber']
+        address = request.form['address'] 
+        passwrd = request.form['passwrd']
+        area = request.form['area']
+        mycur.execure("INSERT INTO users VALUES ?,?,?,?,?,?,?", (email, name, surname, phonenum, address, passwrd, area))
+        db.commit()
+        redirect("userlogin.html")
+        #check if user exists 
+        
+        
+
+@app.route('/userlogin', methods = ["GET", "POST"])
+def userlogin():
+    if request.method == 'POST':
+        mycur = db.cursor()
+        email = request.form['username']
+        passwrd = request.form['passwrd']
+        mycur.execute("Select user_name, passwrd FROM users where name = '" %email% "' and passwrd = '" %passwrd% "'")
+        db.commit()
+        
+        results = mycur.fetchall()
+        
+        if len(results) == 0:
+            print("Incorrect Login Details Entered. Please try again")
+            render_template("login.html")
+            
+        else:
+            area = mycur.execute("Select area FROM users WHERE name = '"%email%"'")
+            db.commit()
+            if area == 1:
+                redirect("dashboard1.html")
+            if area == 2:
+                redirect("dashboard2.html")
+            else:
+                redirect("dashboard3.html")
+                
+
+@app.route('/adminlogin', methods = ["GET", "POST"])
+def adminlogin():
+    if request.method == 'POST':
+        adminemail = request.form['adminusername']
+        adminpasswrd = request.form['adminpasswrd']
+    
+        
+        if adminemail == "thegreensadmin@gmail.com" & adminpasswrd == "12345":
+            redirect("admindashboard.html")
+            
+            
+        else:
+            print("Incorrect Login Details Entered. Please try again")
+            render_template("login.html")
+            
+            
+@app.route('/dashboard1', methods = ["GET", "POST"])
+def dashboard1():
+    if request.method == 'POST':
+        mycur = db.cursor() 
+        mycur.execute("Select readingdate FROM ldr1data where readingdate = (SELECT MAX(readingdate) from ldr1data)")
+        db.commit()
+        readingdatetime = mycur.fetchone()
+        
+        mycur.execute("Select LDRreading FROM ldr1data where readingdate = (SELECT MAX(readingdate) from ldr1data)")
+        db.commit()
+        lastreading = mycur.fetchone()
+        
+        mycur.execute("SELECT LDRreading FROM ldr1data ORDER BY readingdate  DESC LIMIT 1,1")
+        db.commit()
+        secondlastreading = mycur.fetchone()
+        
+        pchange = lastreading - secondlastreading / lastreading * 100 
+        
+        render_template("dashboard.html", readingdatetime, lastreading, pchange)
+        
+
+@app.route('/dashboard2', methods = ["GET", "POST"])
+def dashboard2():
+    if request.method == 'POST':
+        mycur = db.cursor() 
+        mycur.execute("Select readingdate FROM ldr2data where readingdate = (SELECT MAX(readingdate) from ldr2data)")
+        db.commit()
+        readingdatetime = mycur.fetchone()
+        
+        mycur.execute("Select LDRreading FROM ldr2data where readingdate = (SELECT MAX(readingdate) from ldr2data)")
+        db.commit()
+        lastreading = mycur.fetchone()
+        
+        mycur.execute("SELECT LDRreading FROM ldr2data ORDER BY readingdate  DESC LIMIT 1,1")
+        db.commit()
+        secondlastreading = mycur.fetchone()
+        
+        pchange = lastreading - secondlastreading / lastreading * 100 
+        
+        render_template("dashboard.html", readingdatetime, lastreading, pchange)
+        
+        
+@app.route('/dashboard3', methods = ["GET", "POST"])
+def dashboard3():
+    if request.method == 'POST':
+        mycur = db.cursor() 
+        mycur.execute("Select readingdate FROM ldr3data where readingdate = (SELECT MAX(readingdate) from ldr3data)")
+        db.commit()
+        readingdatetime = mycur.fetchone()
+        
+        mycur.execute("Select LDRreading FROM ldr3data where readingdate = (SELECT MAX(readingdate) from ldr3data)")
+        db.commit()
+        lastreading = mycur.fetchone()
+        
+        mycur.execute("SELECT LDRreading FROM ldr3data ORDER BY readingdate  DESC LIMIT 1,1")
+        db.commit()
+        secondlastreading = mycur.fetchone()
+        
+        pchange = lastreading - secondlastreading / lastreading * 100 
+        
+        render_template("dashboard.html", readingdatetime, lastreading, pchange)  
+        
+        
+@app.route('/admindashboard', methods = ["GET", "POST"])
+def admindashboard():
+     if request.method == 'POST':
+        mycur = db.cursor() 
+        mycur.execute("Select LDRreading FROM ldr1data where readingdate = (SELECT MAX(readingdate) from ldr1data)")
+        db.commit()
+        area1lr = mycur.fetchone()
+        redirect("dashboard1.html")
+        
+        mycur.execute("Select LDRreading FROM ldr2data where readingdate = (SELECT MAX(readingdate) from ldr2data)")
+        db.commit()
+        area2lr = mycur.fetchone()
+        redirect("dashboard2.html")
+        
+        mycur.execute("Select LDRreading FROM ldr3data where readingdate = (SELECT MAX(readingdate) from ldr3data)")
+        db.commit()
+        area3lr = mycur.fetchone()
+        redirect("dashboard3.html")
+        
+        mostsunlr = max(area1lr, area2lr, area3lr)
+        mostsun = ""
+        
+        if mostsunlr == area1lr:
+            mostsun == "Area 1"
+            
+        elif mostsunlr == area2lr:
+            mostsun == "Area 2"
+              
+        else:
+            mostsun == "Area 3"
+            
+        render_template("admindashboard.html", mostsun, area1lr, area2lr, area3lr)
+        
+        
+            
+            
+            
+        
+        
+        
+        
+        
+if __name__ == '__main__':
+    app.run(debug=True)

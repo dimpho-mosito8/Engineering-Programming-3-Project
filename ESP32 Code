@@ -1,0 +1,36 @@
+// declaration of variables
+int ldr = 36; 
+int green = 14;
+int red = 16;
+
+ void setup() {
+  // initialize serial communication at 9600 bits per second:
+  Serial.begin(9600);
+  // set pins as outputs
+  pinMode(green, OUTPUT); 
+  pinMode(red, OUTPUT);
+}
+
+void loop() {
+  // reads the input on analog pin (value between 0 and 4095)
+  int analogValue = analogRead(ldr);
+
+  Serial.println("Analog Value = "); // print statement to Serial Monitor
+  Serial.print(analogValue);   // the raw analog reading
+
+  // qualitatively determined thresholds
+  if (analogValue < 400) {
+    Serial.println(" => Dark"); 
+    digitalWrite(red, HIGH); // switch on red LED
+    digitalWrite(green, LOW); //switch off green LED
+    
+
+  } else {
+    Serial.println(" => Light");
+    digitalWrite(green, HIGH); // switch on red LED
+    digitalWrite(red, LOW); //switch off red LED
+
+
+  delay(500);
+}
+}

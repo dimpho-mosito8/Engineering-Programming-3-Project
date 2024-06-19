@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Admin Dashboard</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <!-- Custom CSS -->
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-image: url('{{ url_for('static', filename='img/bg-img/1.jpg') }}');
+            height: 100%;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-size: cover;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        
+        }
+       
+        .content {
+            margin-left: 250px;
+            padding: 20px;
+        }
+        .card {
+            margin-bottom: 20px;
+        }
+        .bg-img {
+            background-image: url('{{ url_for('static', filename='img/bg-img/24.jpg') }}');
+            height: 100%;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-size: cover;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+   
+        <!-- Content -->
+        <div class="content">
+            <nav class="navbar navbar-expand-lg navbar-light bg-light">
+                <a class="navbar-brand" href="#">Admin Dashboard</a>
+                <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav ml-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" href="/">Home</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/logout">Logout</a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col-lg-6 col-md-10">
+                        <div class="card text-white bg-warning mb-3">
+                            <div class="card-header">Node 1: Lettuce</div>
+                            <div class="card-body">
+                                <h5 class="card-title">Location: West Half of Greenhouse</h5>
+                                <form action="{{url_for('admindashboard')}}" method="POST">
+                                    <input type="hidden" name="node" value="1">
+                                    <button type="submit"class="btn btn-light">Node 1 Dashboard</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6 col-md-10">
+                        <div class="card text-white bg-success mb-3">
+                            <div class="card-header">Node 2: Lettuce</div>
+                            <div class="card-body">
+                                <h5 class="card-title">Location: East Half of Greenhouse</h5>
+                                <form action="{{url_for('admindashboard')}}" method="POST">
+                                    <input type="hidden" name="node" value="2">
+                                    <button type="submit" class="btn btn-light">Node 2 Dashboard</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    
+
+                <div class="row justify-content-center">
+                    <div class="col-lg-10 col-md-16 mx-auto">
+                        <div class="card">
+                            <div class="card-body">
+                                <h4>Area Graph</h4>
+                                <canvas id="ldrChart"></canvas>
+                                <img src="/static/bar_chart.png" alt="graph" /> 
+                            </div>
+                        </div>
+                    </div>
+                    
+                </div>
+
+         
+
+
+        </div>
+    </div>
+
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom JS for charts -->
+    <script>
+        var ctx1 = document.getElementById('dailySalesChart').getContext('2d');
+        var dailySalesChart = new Chart(ctx1, {
+            type: 'line',
+            data: {
+                labels: ['M', 'T', 'W', 'T', 'F', 'S', 'S'],
+                datasets: [{
+                    label: 'Sales',
+                    data: [12, 19, 3, 5, 2, 3, 7],
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                }]
+            }
+        });
+
+        var ctx2 = document.getElementById('emailSubscriptionsChart').getContext('2d');
+        var emailSubscriptionsChart = new Chart(ctx2, {
+            type: 'bar',
+            data: {
+                labels: ['Campaign 1', 'Campaign 2', 'Campaign 3', 'Campaign 4'],
+                datasets: [{
+                    label: 'Subscriptions',
+                    data: [12, 19, 3, 5],
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    borderWidth: 1
+                }]
+            }
+        });
+
+        
+    </script>
+</body>
+</html>

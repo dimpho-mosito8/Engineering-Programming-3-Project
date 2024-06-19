@@ -1,0 +1,25 @@
+CREATE DATABASE light_control_sys;
+
+USE light_control_sys;
+
+CREATE TABLE  ldr1data(
+ReadingID int NOT NULL PRIMARY KEY AUTO_INCREMENT, 
+LUX float NOT NULL, 
+ReadingDate DATETIME NOT NULL);
+
+CREATE TABLE ldr2data(
+ReadingID int NOT NULL PRIMARY KEY AUTO_INCREMENT, 
+LUX float NOT NULL, 
+ReadingDate DATETIME NOT NULL);
+
+CREATE TABLE ldr2data(
+ReadingID int NOT NULL PRIMARY KEY AUTO_INCREMENT, 
+LUX float NOT NULL, 
+ReadingDate DATETIME NOT NULL);
+
+CREATE TABLE user_info(
+UserID varchar(50) NOT NULL PRIMARY KEY, 
+username varchar(50) NOT NULL, 
+usersurname varchar(50) NULL, 
+passwrd varchar(50) NOT NULL, 
+area int NOT NULL)

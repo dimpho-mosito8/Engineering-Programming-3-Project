@@ -1,189 +1,298 @@
-from flask import Flask, render_template, request, redirect
+// importing all necessary libraries 
+from flask import Flask, render_template, request, redirect, url_for, jsonify, session
 import mysql.connector
-
+from mysql.connector import Error
+from datetime import datetime
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy
+matplotlib.use('Agg')
 
 app = Flask(__name__)
+app.secret_key = '4431'  # Add a secret key for session management
 
-db = mysql.connector.connect (
-    host = "127.0.0.1",
-    user = "root",
-    passwd = "root",
-    database = "lightControlSys"
-)
+//Connecting the database 
+def get_db_connection():
+    connection = mysql.connector.connect(
+        user='root', 
+        password='root',
+        host='localhost',
+        database='light_control_sys'
+    )
+    return connection
 
-mycur = db.cursor()
+//Set up database if not set up already
+def setup_database():
+    db = get_db_connection()
+    mycur = db.cursor()
+    mycur.execute("CREATE DATABASE IF NOT EXISTS light_control_sys")
+    mycur.execute("USE light_control_sys")
+    mycur.execute("CREATE TABLE IF NOT EXISTS ldr1data(ReadingID int NOT NULL PRIMARY KEY AUTO_INCREMENT, LUX float NOT NULL, ReadingDate  datetime NOT NULL)")
+    mycur.execute("CREATE TABLE IF NOT EXISTS ldr2data(ReadingID int NOT NULL PRIMARY KEY AUTO_INCREMENT, LUX float NOT NULL, ReadingDate  datetime NOT NULL)")
+    mycur.execute("CREATE TABLE IF NOT EXISTS ldr2data(ReadingID int NOT NULL PRIMARY KEY AUTO_INCREMENT, LUX float NOT NULL, ReadingDate  datetime NOT NULL)")
+    mycur.execute("CREATE TABLE IF NOT EXISTS user_info(UserID varchar(50) NOT NULL PRIMARY KEY, username varchar(50) NOT NULL, usersurname varchar(50) NULL, passwrd varchar(50) NOT NULL, area int NOT NULL)")
+    db.commit()
+    mycur.close()
+    db.close()
 
 
-@app.route('/', methods = ["GET", "POST"])
+setup_database()
+
+
+// webpage to receive data from esp32 - node 2
+@app.route('/data', methods=['POST'])
+def receive_data():
+    data = request.get_json()
+    light_intensity = data.get('light_intensity')
+    userid = data.get('User_ID')
+
+    if light_intensity is None:
+        return jsonify({"error": "No light intensity provided"}), 400
+
+    try:
+        db = get_db_connection()
+        mycur = db.cursor()
+        mycur.execute("INSERT INTO ldr2data (ReadingDate, LUX) VALUES (%s, %s)", (datetime.now(), light_intensity))
+        db.commit()
+        mycur.close()
+        db.close()
+            
+        
+            
+        print("light_intensity: ", light_intensity)
+        return jsonify("Data inserted successfully"), 200
+        
+    except Error as e:
+        return jsonify({"error": str(e)}), 500
+
+
+// webpage to receive data from esp32 - node 1
+@app.route('/data1', methods=['POST'])
+def receive_data1():
+    data = request.get_json()
+    light_intensity = data.get('light_intensity')
+    userid = data.get('User_ID')
+
+    if light_intensity is None:
+        return jsonify({"error": "No light intensity provided"}), 400
+
+    try:
+        db = get_db_connection()
+        mycur = db.cursor()
+        mycur.execute("INSERT INTO ldr1data (ReadingDate, LUX) VALUES (%s, %s)", (datetime.now(), light_intensity))
+        db.commit()
+        mycur.close()
+        db.close()
+            
+        print("light_intensity: ", light_intensity)
+        return jsonify("Data inserted successfully"), 200
+        
+    except Error as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/')
 def home():
-    render_template("home.html")
-    
-    
-    
-@app.route('/register', methods = ["GET", "POST"])
+    return render_template("index.html")
+
+
+@app.route('/about')
+def about():
+    return render_template("about.html")
+
+
+@app.route('/contact')
+def contact():
+    return render_template("contact.html")
+
+
+@app.route('/logout')
+def logout():
+    session.pop('username', None)
+    return redirect(url_for('home'))
+
+// signup page 
+@app.route('/signup', methods=["GET", "POST"])
 def register():
     if request.method == 'POST':
+        db = get_db_connection()
         mycur = db.cursor()
-        email = request.form ['username']
+        email = request.form['username']
         name = request.form['firstname']
         surname = request.form['surname']
-        phonenum = request.form['phonenumber']
-        address = request.form['address'] 
         passwrd = request.form['passwrd']
         area = request.form['area']
-        mycur.execure("INSERT INTO users VALUES ?,?,?,?,?,?,?", (email, name, surname, phonenum, address, passwrd, area))
+        mycur.execute("INSERT INTO user_info (userID, username, usersurname, passwrd, area) VALUES (%s, %s, %s, %s, %s)",
+                      (email, name, surname, passwrd, area))
         db.commit()
-        redirect("userlogin.html")
-        #check if user exists 
-        
-        
+        return redirect(url_for('userlogin'))
+    return render_template("signup.html")
 
-@app.route('/userlogin', methods = ["GET", "POST"])
+
+//user login page
+@app.route('/userlogin', methods=["GET", "POST"])
 def userlogin():
     if request.method == 'POST':
+        db = get_db_connection()
         mycur = db.cursor()
         email = request.form['username']
         passwrd = request.form['passwrd']
-        mycur.execute("Select user_name, passwrd FROM users where name = '" %email% "' and passwrd = '" %passwrd% "'")
-        db.commit()
-        
-        results = mycur.fetchall()
-        
-        if len(results) == 0:
-            print("Incorrect Login Details Entered. Please try again")
-            render_template("login.html")
-            
+        mycur.execute("SELECT userid, passwrd, area FROM user_info WHERE userId = %s AND passwrd = %s", (email, passwrd))
+        results = mycur.fetchone()
+        if not results:
+            return render_template("userlogin.html", error="Incorrect Login Details Entered. Please try again")
         else:
-            area = mycur.execute("Select area FROM users WHERE name = '"%email%"'")
-            db.commit()
-            if area == 1:
-                redirect("dashboard1.html")
-            if area == 2:
-                redirect("dashboard2.html")
+            session['userid'] = email
+            session['area'] = results[2]
+            if session['area'] == 1:
+                return redirect(url_for('dashboard1'))
+            elif session['area'] == 2:
+                return redirect(url_for('dashboard2'))
             else:
-                redirect("dashboard3.html")
-                
+                return redirect(url_for('dashboard3'))
+    
+    return render_template("userlogin.html")
+            
 
-@app.route('/adminlogin', methods = ["GET", "POST"])
+//admin login page 
+@app.route('/adminlogin', methods=["GET", "POST"])
 def adminlogin():
     if request.method == 'POST':
         adminemail = request.form['adminusername']
         adminpasswrd = request.form['adminpasswrd']
-    
-        
-        if adminemail == "thegreensadmin@gmail.com" & adminpasswrd == "12345":
-            redirect("admindashboard.html")
-            
-            
+        if adminemail == "thegreensadmin@gmail.com" and adminpasswrd == "12345":
+            session['admin_logged_in'] = True  # Marking admin as logged in
+            return redirect(url_for('admindashboard'))
         else:
-            print("Incorrect Login Details Entered. Please try again")
-            render_template("login.html")
-            
-            
-@app.route('/dashboard1', methods = ["GET", "POST"])
-def dashboard1():
-    if request.method == 'POST':
-        mycur = db.cursor() 
-        mycur.execute("Select readingdate FROM ldr1data where readingdate = (SELECT MAX(readingdate) from ldr1data)")
-        db.commit()
-        readingdatetime = mycur.fetchone()
-        
-        mycur.execute("Select LDRreading FROM ldr1data where readingdate = (SELECT MAX(readingdate) from ldr1data)")
-        db.commit()
-        lastreading = mycur.fetchone()
-        
-        mycur.execute("SELECT LDRreading FROM ldr1data ORDER BY readingdate  DESC LIMIT 1,1")
-        db.commit()
-        secondlastreading = mycur.fetchone()
-        
-        pchange = lastreading - secondlastreading / lastreading * 100 
-        
-        render_template("dashboard.html", readingdatetime, lastreading, pchange)
-        
+            return render_template("adminlogin.html", error="Incorrect Login Details Entered. Please try again")
+    return render_template("adminlogin.html")
 
-@app.route('/dashboard2', methods = ["GET", "POST"])
+
+
+// funcion to plot line graphs on the individual dashboards
+def plot_lux_data(table):
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        cursor.execute(f"SELECT Readingdate, LUX FROM {table} ORDER BY readingdate DESC LIMIT 10")
+        data = cursor.fetchall()
+        Readingdate = [row[0] for row in data]
+        LUX = [row[1] for row in data]
+        plt.plot(Readingdate, LUX)
+        plt.xlabel('Reading Date')
+        plt.ylabel('LUX')
+        plt.title(f'{table.upper()} LUX')
+        plt.savefig(f'static/{table}_graph.png')
+        plt.clf()
+            
+        cursor.close()
+        connection.close()
+
+            
+    except Error as e:
+        print(f"Error fetching data from Node: {e}")
+        return jsonify({"status": "Error fetching data"})
+
+
+
+@app.route('/dashboard1')
+def dashboard1():
+    db = get_db_connection()
+    mycur = db.cursor()
+    mycur.execute("SELECT readingdate, LUX FROM ldr1data ORDER BY readingdate DESC LIMIT 5")
+    data = mycur.fetchall()
+    mycur.close()
+    
+    
+
+    labels = [row[0].strftime('%Y-%m-%d %H:%M:%S') for row in data]
+    readings = [row[1] for row in data]
+    
+    plot_lux_data('ldr1data')
+    
+     
+
+
+    return render_template("dashboard1.html", 
+                           dashboard_title="Carrot Dashboard", 
+                           data=data, 
+                           labels=labels, 
+                           readings=readings)
+
+@app.route('/dashboard2')
 def dashboard2():
-    if request.method == 'POST':
-        mycur = db.cursor() 
-        mycur.execute("Select readingdate FROM ldr2data where readingdate = (SELECT MAX(readingdate) from ldr2data)")
-        db.commit()
-        readingdatetime = mycur.fetchone()
-        
-        mycur.execute("Select LDRreading FROM ldr2data where readingdate = (SELECT MAX(readingdate) from ldr2data)")
-        db.commit()
-        lastreading = mycur.fetchone()
-        
-        mycur.execute("SELECT LDRreading FROM ldr2data ORDER BY readingdate  DESC LIMIT 1,1")
-        db.commit()
-        secondlastreading = mycur.fetchone()
-        
-        pchange = lastreading - secondlastreading / lastreading * 100 
-        
-        render_template("dashboard.html", readingdatetime, lastreading, pchange)
-        
-        
-@app.route('/dashboard3', methods = ["GET", "POST"])
-def dashboard3():
-    if request.method == 'POST':
-        mycur = db.cursor() 
-        mycur.execute("Select readingdate FROM ldr3data where readingdate = (SELECT MAX(readingdate) from ldr3data)")
-        db.commit()
-        readingdatetime = mycur.fetchone()
-        
-        mycur.execute("Select LDRreading FROM ldr3data where readingdate = (SELECT MAX(readingdate) from ldr3data)")
-        db.commit()
-        lastreading = mycur.fetchone()
-        
-        mycur.execute("SELECT LDRreading FROM ldr3data ORDER BY readingdate  DESC LIMIT 1,1")
-        db.commit()
-        secondlastreading = mycur.fetchone()
-        
-        pchange = lastreading - secondlastreading / lastreading * 100 
-        
-        render_template("dashboard.html", readingdatetime, lastreading, pchange)  
+    db = get_db_connection()
+    mycur = db.cursor()
+    mycur.execute("SELECT readingdate, LUX FROM ldr2data ORDER BY readingdate DESC LIMIT 5")
+    data = mycur.fetchall()
+
+    labels = [row[0].strftime('%Y-%m-%d %H:%M:%S') for row in data]
+    readings = [row[1] for row in data]
+    
+    plot_lux_data('ldr2data')
+
+    return render_template("dashboard2.html", 
+                           dashboard_title="Lettuce Dashboard",  
+                           data=data, 
+                           labels=labels, 
+                           readings=readings)
+
+
+// function to plot bar graph on admin dashboard
+def bar_lux_admindata():
+    try:
+
+        db = get_db_connection()
+        mycur = db.cursor()
+        mycur.execute("SELECT LUX FROM ldr1data ORDER BY readingdate DESC LIMIT 1")
+        lux1 = mycur.fetchone()[0]
+        mycur.execute("SELECT LUX FROM ldr2data ORDER BY readingdate DESC LIMIT 1")
+        lux2 = mycur.fetchone()[0]
         
         
-@app.route('/admindashboard', methods = ["GET", "POST"])
+        tables = ['Area 1', 'Area 2']
+        lux_values = [lux1, lux2]
+        
+        plt.bar(tables, lux_values)
+        plt.xlabel('Greenhouse Area')
+        plt.ylabel('Last Lux Value')
+        plt.title('Last Lux Readings Comparison')
+    
+    # Save the plot as a file or convert to HTML
+        plt.savefig('static/bar_chart.png')  # Save the plot as an image file
+        plt.clf()  # Close the plot to free up resources
+        
+            
+        mycur.close()
+        db.close()
+
+            
+    except Error as e:
+        print(f"Error fetching data from Node: {e}")
+        return jsonify({"status": "Error fetching data"})
+
+
+@app.route('/admindashboard', methods=['POST', 'GET'])
 def admindashboard():
-     if request.method == 'POST':
-        mycur = db.cursor() 
-        mycur.execute("Select LDRreading FROM ldr1data where readingdate = (SELECT MAX(readingdate) from ldr1data)")
-        db.commit()
-        area1lr = mycur.fetchone()
-        redirect("dashboard1.html")
-        
-        mycur.execute("Select LDRreading FROM ldr2data where readingdate = (SELECT MAX(readingdate) from ldr2data)")
-        db.commit()
-        area2lr = mycur.fetchone()
-        redirect("dashboard2.html")
-        
-        mycur.execute("Select LDRreading FROM ldr3data where readingdate = (SELECT MAX(readingdate) from ldr3data)")
-        db.commit()
-        area3lr = mycur.fetchone()
-        redirect("dashboard3.html")
-        
-        mostsunlr = max(area1lr, area2lr, area3lr)
-        mostsun = ""
-        
-        if mostsunlr == area1lr:
-            mostsun == "Area 1"
-            
-        elif mostsunlr == area2lr:
-            mostsun == "Area 2"
-              
+    if 'admin_logged_in' not in session or not session['admin_logged_in']:
+        return redirect(url_for('adminlogin'))
+    
+    if request.method == "POST":
+        node = request.form['node']
+        if node == '1':
+            return redirect(url_for('dashboard1'))
         else:
-            mostsun == "Area 3"
-            
-        render_template("admindashboard.html", mostsun, area1lr, area2lr, area3lr)
-        
-        
-            
-            
-            
-        
-        
-        
-        
-        
+            return redirect(url_for('dashboard2'))
+    
+    bar_lux_admindata()
+    
+    return render_template("admindashboard.html")
+
+
+
+
+
+
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
